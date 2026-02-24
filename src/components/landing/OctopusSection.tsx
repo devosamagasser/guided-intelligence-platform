@@ -1,4 +1,5 @@
 import { useState } from "react";
+import octopusMascot from "@/assets/octopus-mascot.png";
 
 interface Industry {
   name: string;
@@ -15,58 +16,11 @@ const industries: Industry[] = [
   { name: "Restaurant", active: false, angle: 198, icon: "🍽️" },
 ];
 
-/** SVG octopus mascot matching brand: cat ears, glasses, pointer stick, curly tentacles */
-const OctopusSVG = ({ hovered, activeIndustries }: { hovered: string | null; activeIndustries: string[] }) => {
-  const armTargets = industries.map((ind) => {
-    const rad = (ind.angle * Math.PI) / 180;
-    const r = 140;
-    return {
-      name: ind.name,
-      x: 200 + r * Math.cos(rad),
-      y: 210 + r * Math.sin(rad),
-      angle: ind.angle,
-      active: ind.active,
-    };
-  });
-
-  // Curly tentacle path with loops
-  const getCurlyArm = (tx: number, ty: number) => {
-    const cx = 200, cy = 230;
-    const dx = tx - cx, dy = ty - cy;
-    const len = Math.sqrt(dx * dx + dy * dy);
-    const nx = dx / len, ny = dy / len;
-    // perpendicular
-    const px = -ny, py = nx;
-    const curlSize = 12;
-    // Build path with 3 curls
-    let path = `M ${cx} ${cy}`;
-    for (let i = 1; i <= 4; i++) {
-      const t = i / 4;
-      const bx = cx + dx * t;
-      const by = cy + dy * t;
-      const side = i % 2 === 0 ? 1 : -1;
-      const c1x = cx + dx * (t - 0.18) + px * curlSize * side;
-      const c1y = cy + dy * (t - 0.18) + py * curlSize * side;
-      const c2x = cx + dx * (t - 0.05) + px * curlSize * side * 0.5;
-      const c2y = cy + dy * (t - 0.05) + py * curlSize * side * 0.5;
-      path += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${bx} ${by}`;
-    }
-    // Curl at the tip
-    const tipCurl = 8;
-    path += ` q ${px * tipCurl} ${py * tipCurl}, ${px * tipCurl + nx * 2} ${py * tipCurl + ny * 2}`;
-    return path;
-  };
-
-  const fill = "hsl(120 55% 48%)"; // Matching the green from the image
-  const fillDark = "hsl(120 55% 38%)";
-
+/** Connector lines from center to industry nodes */
+const ConnectorLines = ({ hovered }: { hovered: string | null }) => {
   return (
-    <svg viewBox="0 0 400 400" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 400 400" className="w-full h-full absolute inset-0" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
-        <radialGradient id="bodyGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="hsl(155 100% 81%)" stopOpacity="0.1" />
-          <stop offset="100%" stopColor="hsl(155 100% 81%)" stopOpacity="0" />
-        </radialGradient>
         <filter id="glow">
           <feGaussianBlur stdDeviation="3" result="blur" />
           <feMerge>
@@ -75,29 +29,39 @@ const OctopusSVG = ({ hovered, activeIndustries }: { hovered: string | null; act
           </feMerge>
         </filter>
       </defs>
+      {industries.map((ind) => {
+        const rad = (ind.angle * Math.PI) / 180;
+        const r = 145;
+        const tx = 200 + r * Math.cos(rad);
+        const ty = 200 + r * Math.sin(rad);
+        const isGlowing = ind.active || hovered === ind.name;
 
-      <circle cx="200" cy="200" r="120" fill="url(#bodyGlow)" />
+        // Curved connector
+        const cx = 200, cy = 200;
+        const mx = (cx + tx) / 2;
+        const my = (cy + ty) / 2;
+        const perpX = -(ty - cy) * 0.2;
+        const perpY = (tx - cx) * 0.2;
+        const path = `M ${cx} ${cy} Q ${mx + perpX} ${my + perpY}, ${tx} ${ty}`;
 
-      {/* Tentacle arms to industry nodes */}
-      {armTargets.map((arm) => {
-        const isGlowing = arm.active || hovered === arm.name;
         return (
-          <g key={arm.name}>
+          <g key={ind.name}>
             <path
-              d={getCurlyArm(arm.x, arm.y)}
-              stroke={isGlowing ? "hsl(155 100% 81%)" : fill}
-              strokeWidth={isGlowing ? 3.5 : 2.5}
+              d={path}
+              stroke={isGlowing ? "hsl(155 100% 81%)" : "hsl(152 30% 25%)"}
+              strokeWidth={isGlowing ? 2.5 : 1.5}
               strokeLinecap="round"
               fill="none"
-              opacity={isGlowing ? 0.9 : 0.4}
+              opacity={isGlowing ? 0.7 : 0.2}
               className="transition-all duration-500"
               filter={isGlowing ? "url(#glow)" : undefined}
+              strokeDasharray={isGlowing ? "none" : "4 4"}
             />
             <circle
-              cx={arm.x}
-              cy={arm.y}
-              r={isGlowing ? 5 : 3}
-              fill={isGlowing ? "hsl(155 100% 81%)" : fill}
+              cx={tx}
+              cy={ty}
+              r={isGlowing ? 4 : 2.5}
+              fill={isGlowing ? "hsl(155 100% 81%)" : "hsl(152 30% 25%)"}
               opacity={isGlowing ? 0.8 : 0.3}
               className="transition-all duration-500"
               filter={isGlowing ? "url(#glow)" : undefined}
@@ -105,49 +69,6 @@ const OctopusSVG = ({ hovered, activeIndustries }: { hovered: string | null; act
           </g>
         );
       })}
-
-      {/* === OCTOPUS BODY === */}
-      {/* Main body - round blob */}
-      <ellipse cx="200" cy="195" rx="52" ry="48" fill={fill} />
-
-      {/* Head / top dome */}
-      <ellipse cx="200" cy="170" rx="44" ry="42" fill={fill} />
-
-      {/* Cat ears */}
-      <polygon points="166,148 156,108 180,138" fill={fill} />
-      <polygon points="234,148 244,108 220,138" fill={fill} />
-      {/* Inner ear */}
-      <polygon points="168,144 161,118 178,138" fill={fillDark} opacity="0.3" />
-      <polygon points="232,144 239,118 222,138" fill={fillDark} opacity="0.3" />
-
-      {/* Glasses */}
-      {/* Left lens */}
-      <rect x="168" y="164" width="26" height="20" rx="6" ry="6" stroke="white" strokeWidth="3" fill="white" fillOpacity="0.15" />
-      {/* Right lens */}
-      <rect x="206" y="164" width="26" height="20" rx="6" ry="6" stroke="white" strokeWidth="3" fill="white" fillOpacity="0.15" />
-      {/* Bridge */}
-      <line x1="194" y1="174" x2="206" y2="174" stroke="white" strokeWidth="3" />
-      {/* Left temple */}
-      <line x1="168" y1="170" x2="158" y2="166" stroke="white" strokeWidth="2.5" />
-      {/* Right temple */}
-      <line x1="232" y1="170" x2="242" y2="166" stroke="white" strokeWidth="2.5" />
-
-      {/* Eyes (inside glasses) */}
-      <circle cx="181" cy="174" r="5" fill="white" />
-      <circle cx="219" cy="174" r="5" fill="white" />
-      <circle cx="182" cy="173" r="2.5" fill={fillDark} />
-      <circle cx="220" cy="173" r="2.5" fill={fillDark} />
-
-      {/* Pointer stick - extending from right side */}
-      <line x1="240" y1="190" x2="310" y2="130" stroke={fill} strokeWidth="3" strokeLinecap="round" />
-      {/* Pointer tip */}
-      <circle cx="312" cy="128" r="2" fill={fill} />
-
-      {/* Mouth - small smile */}
-      <path d="M 190 198 Q 200 205, 210 198" stroke={fillDark} strokeWidth="1.5" fill="none" opacity="0.5" />
-
-      {/* Body pulse ring */}
-      <circle cx="200" cy="195" r="65" stroke="hsl(155 100% 81%)" strokeWidth="0.5" opacity="0.15" className="animate-pulse-glow" />
     </svg>
   );
 };
@@ -170,9 +91,13 @@ const OctopusSection = () => {
 
         {/* Octopus hub */}
         <div className="relative w-full max-w-2xl mx-auto aspect-square flex items-center justify-center">
-          {/* SVG Octopus with arms */}
+          {/* Connector lines */}
           <div className="absolute inset-0 z-0">
-            <OctopusSVG hovered={hovered} activeIndustries={industries.filter(i => i.active).map(i => i.name)} />
+            <ConnectorLines hovered={hovered} />
+          </div>
+          {/* Mascot image */}
+          <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+            <img src={octopusMascot} alt="PLATME Octopus Mascot" className="w-[40%] h-auto drop-shadow-[0_0_30px_hsl(155,100%,81%,0.3)]" />
           </div>
 
           {/* Industry nodes */}
