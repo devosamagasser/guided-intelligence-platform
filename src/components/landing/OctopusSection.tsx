@@ -15,36 +15,56 @@ const industries: Industry[] = [
   { name: "Restaurant", active: false, angle: 198, icon: "🍽️" },
 ];
 
-/** SVG octopus with 5 tentacle arms that curve toward each industry node */
+/** SVG octopus mascot matching brand: cat ears, glasses, pointer stick, curly tentacles */
 const OctopusSVG = ({ hovered, activeIndustries }: { hovered: string | null; activeIndustries: string[] }) => {
-  // Arm endpoints (matching industry angles, in SVG coords centered at 200,200, radius ~130)
   const armTargets = industries.map((ind) => {
     const rad = (ind.angle * Math.PI) / 180;
-    const r = 130;
+    const r = 140;
     return {
       name: ind.name,
       x: 200 + r * Math.cos(rad),
-      y: 200 + r * Math.sin(rad),
+      y: 210 + r * Math.sin(rad),
       angle: ind.angle,
       active: ind.active,
     };
   });
 
-  const getArmPath = (tx: number, ty: number) => {
-    const cx = 200, cy = 200;
-    // Bezier control points for a curvy tentacle
-    const mx = (cx + tx) / 2;
-    const my = (cy + ty) / 2;
-    const perpX = -(ty - cy) * 0.25;
-    const perpY = (tx - cx) * 0.25;
-    return `M ${cx} ${cy} C ${cx + perpX * 0.5} ${cy + perpY * 0.5}, ${mx + perpX} ${my + perpY}, ${tx} ${ty}`;
+  // Curly tentacle path with loops
+  const getCurlyArm = (tx: number, ty: number) => {
+    const cx = 200, cy = 230;
+    const dx = tx - cx, dy = ty - cy;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const nx = dx / len, ny = dy / len;
+    // perpendicular
+    const px = -ny, py = nx;
+    const curlSize = 12;
+    // Build path with 3 curls
+    let path = `M ${cx} ${cy}`;
+    for (let i = 1; i <= 4; i++) {
+      const t = i / 4;
+      const bx = cx + dx * t;
+      const by = cy + dy * t;
+      const side = i % 2 === 0 ? 1 : -1;
+      const c1x = cx + dx * (t - 0.18) + px * curlSize * side;
+      const c1y = cy + dy * (t - 0.18) + py * curlSize * side;
+      const c2x = cx + dx * (t - 0.05) + px * curlSize * side * 0.5;
+      const c2y = cy + dy * (t - 0.05) + py * curlSize * side * 0.5;
+      path += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${bx} ${by}`;
+    }
+    // Curl at the tip
+    const tipCurl = 8;
+    path += ` q ${px * tipCurl} ${py * tipCurl}, ${px * tipCurl + nx * 2} ${py * tipCurl + ny * 2}`;
+    return path;
   };
+
+  const fill = "hsl(120 55% 48%)"; // Matching the green from the image
+  const fillDark = "hsl(120 55% 38%)";
 
   return (
     <svg viewBox="0 0 400 400" className="w-full h-full" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <radialGradient id="bodyGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="hsl(155 100% 81%)" stopOpacity="0.15" />
+          <stop offset="0%" stopColor="hsl(155 100% 81%)" stopOpacity="0.1" />
           <stop offset="100%" stopColor="hsl(155 100% 81%)" stopOpacity="0" />
         </radialGradient>
         <filter id="glow">
@@ -56,51 +76,29 @@ const OctopusSVG = ({ hovered, activeIndustries }: { hovered: string | null; act
         </filter>
       </defs>
 
-      {/* Background glow */}
-      <circle cx="200" cy="200" r="100" fill="url(#bodyGlow)" />
+      <circle cx="200" cy="200" r="120" fill="url(#bodyGlow)" />
 
-      {/* Tentacle arms */}
+      {/* Tentacle arms to industry nodes */}
       {armTargets.map((arm) => {
         const isGlowing = arm.active || hovered === arm.name;
         return (
           <g key={arm.name}>
             <path
-              d={getArmPath(arm.x, arm.y)}
-              stroke={isGlowing ? "hsl(155 100% 81%)" : "hsl(152 30% 25%)"}
-              strokeWidth={isGlowing ? 3 : 2}
+              d={getCurlyArm(arm.x, arm.y)}
+              stroke={isGlowing ? "hsl(155 100% 81%)" : fill}
+              strokeWidth={isGlowing ? 3.5 : 2.5}
               strokeLinecap="round"
               fill="none"
-              opacity={isGlowing ? 0.8 : 0.35}
+              opacity={isGlowing ? 0.9 : 0.4}
               className="transition-all duration-500"
               filter={isGlowing ? "url(#glow)" : undefined}
             />
-            {/* Suction cups along arm */}
-            {[0.3, 0.5, 0.7].map((t) => {
-              const rad = (arm.angle * Math.PI) / 180;
-              const r = 130 * t;
-              const perpX = -(arm.y - 200) * 0.25 * t;
-              const perpY = (arm.x - 200) * 0.25 * t;
-              const sx = 200 + r * Math.cos(rad) + perpX * (1 - t);
-              const sy = 200 + r * Math.sin(rad) + perpY * (1 - t);
-              return (
-                <circle
-                  key={t}
-                  cx={sx}
-                  cy={sy}
-                  r={isGlowing ? 2.5 : 1.5}
-                  fill={isGlowing ? "hsl(155 100% 81%)" : "hsl(152 30% 25%)"}
-                  opacity={isGlowing ? 0.6 : 0.25}
-                  className="transition-all duration-500"
-                />
-              );
-            })}
-            {/* Arm tip node */}
             <circle
               cx={arm.x}
               cy={arm.y}
-              r={isGlowing ? 6 : 4}
-              fill={isGlowing ? "hsl(155 100% 81%)" : "hsl(152 30% 25%)"}
-              opacity={isGlowing ? 0.7 : 0.3}
+              r={isGlowing ? 5 : 3}
+              fill={isGlowing ? "hsl(155 100% 81%)" : fill}
+              opacity={isGlowing ? 0.8 : 0.3}
               className="transition-all duration-500"
               filter={isGlowing ? "url(#glow)" : undefined}
             />
@@ -108,33 +106,48 @@ const OctopusSVG = ({ hovered, activeIndustries }: { hovered: string | null; act
         );
       })}
 
-      {/* Octopus body */}
-      <ellipse cx="200" cy="188" rx="38" ry="44" fill="hsl(152 58% 27%)" opacity="0.9" />
-      {/* Head dome */}
-      <ellipse cx="200" cy="170" rx="32" ry="36" fill="hsl(152 50% 30%)" />
-      {/* Eyes */}
-      <ellipse cx="188" cy="178" rx="8" ry="9" fill="hsl(150 30% 12%)" />
-      <ellipse cx="212" cy="178" rx="8" ry="9" fill="hsl(150 30% 12%)" />
-      <ellipse cx="189" cy="176" rx="4" ry="4.5" fill="hsl(155 100% 81%)" opacity="0.9" />
-      <ellipse cx="213" cy="176" rx="4" ry="4.5" fill="hsl(155 100% 81%)" opacity="0.9" />
-      {/* Pupils */}
-      <circle cx="190" cy="175" r="2" fill="hsl(150 30% 8%)" />
-      <circle cx="214" cy="175" r="2" fill="hsl(150 30% 8%)" />
-      {/* Eye highlights */}
-      <circle cx="191" cy="173" r="1" fill="hsl(155 100% 90%)" opacity="0.8" />
-      <circle cx="215" cy="173" r="1" fill="hsl(155 100% 90%)" opacity="0.8" />
+      {/* === OCTOPUS BODY === */}
+      {/* Main body - round blob */}
+      <ellipse cx="200" cy="195" rx="52" ry="48" fill={fill} />
+
+      {/* Head / top dome */}
+      <ellipse cx="200" cy="170" rx="44" ry="42" fill={fill} />
+
+      {/* Cat ears */}
+      <polygon points="166,148 156,108 180,138" fill={fill} />
+      <polygon points="234,148 244,108 220,138" fill={fill} />
+      {/* Inner ear */}
+      <polygon points="168,144 161,118 178,138" fill={fillDark} opacity="0.3" />
+      <polygon points="232,144 239,118 222,138" fill={fillDark} opacity="0.3" />
+
       {/* Glasses */}
-      <ellipse cx="188" cy="178" rx="12" ry="12" stroke="hsl(152 30% 20%)" strokeWidth="1.5" fill="none" />
-      <ellipse cx="212" cy="178" rx="12" ry="12" stroke="hsl(152 30% 20%)" strokeWidth="1.5" fill="none" />
-      <line x1="200" y1="178" x2="200" y2="178" stroke="hsl(152 30% 20%)" strokeWidth="1.5" />
-      <path d="M 200 176 Q 200 174 200 176" stroke="hsl(152 30% 20%)" strokeWidth="1.5" fill="none" />
-      {/* Glasses bridge */}
-      <path d="M 196 176 C 198 173, 202 173, 204 176" stroke="hsl(152 30% 20%)" strokeWidth="1.2" fill="none" />
-      {/* Mouth - subtle smile */}
-      <path d="M 193 192 Q 200 197, 207 192" stroke="hsl(155 100% 81%)" strokeWidth="1" fill="none" opacity="0.5" />
+      {/* Left lens */}
+      <rect x="168" y="164" width="26" height="20" rx="6" ry="6" stroke="white" strokeWidth="3" fill="white" fillOpacity="0.15" />
+      {/* Right lens */}
+      <rect x="206" y="164" width="26" height="20" rx="6" ry="6" stroke="white" strokeWidth="3" fill="white" fillOpacity="0.15" />
+      {/* Bridge */}
+      <line x1="194" y1="174" x2="206" y2="174" stroke="white" strokeWidth="3" />
+      {/* Left temple */}
+      <line x1="168" y1="170" x2="158" y2="166" stroke="white" strokeWidth="2.5" />
+      {/* Right temple */}
+      <line x1="232" y1="170" x2="242" y2="166" stroke="white" strokeWidth="2.5" />
+
+      {/* Eyes (inside glasses) */}
+      <circle cx="181" cy="174" r="5" fill="white" />
+      <circle cx="219" cy="174" r="5" fill="white" />
+      <circle cx="182" cy="173" r="2.5" fill={fillDark} />
+      <circle cx="220" cy="173" r="2.5" fill={fillDark} />
+
+      {/* Pointer stick - extending from right side */}
+      <line x1="240" y1="190" x2="310" y2="130" stroke={fill} strokeWidth="3" strokeLinecap="round" />
+      {/* Pointer tip */}
+      <circle cx="312" cy="128" r="2" fill={fill} />
+
+      {/* Mouth - small smile */}
+      <path d="M 190 198 Q 200 205, 210 198" stroke={fillDark} strokeWidth="1.5" fill="none" opacity="0.5" />
 
       {/* Body pulse ring */}
-      <circle cx="200" cy="190" r="50" stroke="hsl(155 100% 81%)" strokeWidth="0.5" opacity="0.15" className="animate-pulse-glow" />
+      <circle cx="200" cy="195" r="65" stroke="hsl(155 100% 81%)" strokeWidth="0.5" opacity="0.15" className="animate-pulse-glow" />
     </svg>
   );
 };
